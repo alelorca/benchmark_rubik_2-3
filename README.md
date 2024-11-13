@@ -53,15 +53,18 @@ The amount of RAM needed is around 2GiB per instance.
 In general is nice to either run in quiet mode or separate the stderr with the benchmarking engine output
 from the benchmark results:
 ```bash
-./benchmark_rubik.pl 2>rubik_2^3.log | tee benchmark_single.csv
+./benchmark_rubik.pl 2>rubik_2^3.log
 ```
 
 If running im multi-threaded mode beware that the code will run multiple times:
  - 1 instance
  - 2 simultaneous instances
- - 4 simultaneous instances
  - ...
  - N simultaneous instances (where N is the number or the logical CPUs in the system)
+ - 2xN simultaneous instances
+ - 4xN simultaneous instances
+being the purpose of running over the amount of total CPUs the stress of the system under expected overload 
+and check if the total equivalent HS06 result is stable.
 
 ```bash
 ./benchmark_rubik.pl --quiet --multi | tee benchmark_multi.csv

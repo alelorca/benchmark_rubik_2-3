@@ -231,7 +231,7 @@ sub Get_HEPSPEC06{
 	my $coef = Get_coefficients();
         my $coef_value = $coef->[0];
         my $coef_error = $coef->[1];
-        my $HEPSPEC06 = $n * $coef_value / $e;
+        my $HEPSPEC06 = ($n * $coef_value) / $e;
         my $HEPSPEC06_error_sist = $n * $coef_error / $e;
 	my $HEPSPEC06_error_stat = $n * $coef_value / ($e*$e) * $e_stddev;
 	my $HEPSPEC06_error = sqrt($HEPSPEC06_error_sist*$HEPSPEC06_error_sist + $HEPSPEC06_error_stat*$HEPSPEC06_error_stat);
