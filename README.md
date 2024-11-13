@@ -6,7 +6,9 @@
 1. [Installation](#installation)
 2. [Features](#features)
 3. [Usage](#usage)
-4. [License](#license)
+4. [Output](#output)
+5. [References](#references)
+6. [License](#license)
 
 ## Installation
 
@@ -74,6 +76,37 @@ and check if the total equivalent HS06 result is stable.
 ```bash
 ./benchmark_rubik.pl --quiet --multi | tee benchmark_multi.csv
 ```
+
+## Output
+The values provided are trying to estimate an average of what the full HEPSPEC06 benchmark result would be. Indeed the calculation is very simple and just adjusts some coefficients to have similar values on target systems which were calibrated around 2008, now probably obsoletes. Nevertheless, we can just compare the output of several systems and get an idea about how powerful their CPUs are.
+
+Let's consider the following result:
+```./benchmark_rubik.pl --quiet
+Hostname,N_threads,Total_HS06,Err_Total_HS06,Avg_HS06,Err_Avg_HS06,CPU(%)
+1ca2fb1982f5,1,30.57,0.38,30.57,0.38,99
+```
+In this case, the single-threaded power of the CPU is 30.57 with an error of 0.38, being the units arbitrary but the greater the better (kind of inverse to the elapsed computing time). The CPU thread was running at 99% which is indicative if there was some other processes on the system using the CPU as well.
+
+The multi option allows for inspection of several simultaneus runs. For example, in a system with 16 cores and 16 GiB of RAM one could expect such output:
+```
+Hostname,N_threads,Total_HS06,Err_Total_HS06,Avg_HS06,Err_Avg_HS06,CPU(%)
+desktop,1,30.15,0.37,30.15,0.37,99
+desktop,2,53.62,0.66,26.81,0.33,99
+desktop,4,90.96,1.12,22.74,0.3,99
+desktop,8,152.24,1.88,19.03,0.28,99
+desktop,16,193.17,2.38,12.08,0.21,97.94
+desktop,32,173.54,2.14,5.43,0.23,50.03
+```
+where the last run of 64 instances failed due to lack of memory with messages like this:
+```bash
+Argument "Command terminated by signal 9\n43.63" isn't numeric in division (/) at ./benchmark_rubik.pl line 234.
+Thread 77 terminated abnormally: Illegal division by zero at ./benchmark_rubik.pl line 234.
+```
+Still, the output allows to understand that the best behaviour is when running 16 threads since the value of the Total_HS06 (193.17) is the highest.
+
+## References 
+1. HEPSPEC06: [https://w3.hepix.org/benchmarking/HS06.html]
+2. Rubik_2^3: [https://github.com/alelorca/rubik_2-3/]
 
 ## License
 This project is licensed under the Apache v2 License - see the LICENSE file for details.
