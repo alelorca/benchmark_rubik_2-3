@@ -48,7 +48,7 @@ of the system by running several simultaneous instances up to the amount of avai
 
 The output is a CSV list of values which can easily be translated into a graph for comparison purposes.
 
-The amount of RAM needed is around 2GiB per instance.
+The amount of RAM needed is around 400 MiB per instance.
 
 ## Usage
 
