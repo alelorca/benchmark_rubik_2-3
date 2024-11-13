@@ -30,11 +30,11 @@ use Getopt::Long;
 use Sys::Hostname;
 
 # Version
-my $code_version = '1.0';
-my ($help, $version, $license, $debug, $quiet);
+my $code_version = '1.1';
+my ($help, $version, $license, $debug, $quiet, $single, $multi, $noheader);
 
 # The getoptions parses the cli
-GetOptions('help' => \$help, 'version' => \$version, 'license' => \$license, 'debug' => \$debug, 'quiet' => \$quiet);
+GetOptions('help' => \$help, 'version' => \$version, 'license' => \$license, 'debug' => \$debug, 'quiet' => \$quiet, 'single' => \$single, 'multi' => \$multi, 'noheader' => \$noheader);
 
 Print_usage(0) if $help;
 Print_version() if $version;
@@ -49,38 +49,195 @@ if ( ! -e $executable and -e 'Makefile' ){
 	Print_debug("The binary $executable does not exist yet, running make");
 	system('make', '-s') == 0 or die "The binary $executable could not be made";
 }
-my $format = '%e;%U;%S;%E;%P;%M;%x';
+
 
 # Running the command exchanging stderr and stdout
 my $exchange = defined $quiet ? '2>&1 1>/dev/null' : '3>&1 1>&2 2>&3 3>&-';
-my $command = `/usr/bin/env time --format="$format" $executable -c -q 15 $exchange`;
-Print_debug($format);
-Print_debug($command);
 
-# Opening the result
-my ($e, $u, $s, @trash) = split (/;/, $command);
 
-# The Benchmark formula for equivalence to HEPSPEC06/core
-# $HEPSPEC06_core = coefficient / elapsed_time, where coef = 729 and err_coef = 9, according to the last fit
+Threaded_runs();
 
-my $coef = Get_coefficients();
-my $coef_value = $coef->[0];
-my $coef_error = $coef->[1];
-my $HEPSPEC06_core = $coef_value / $e;
-my $HEPSPEC06_core_error_sist =  $coef_error / $e;
-my $HEPSPEC06_core_error_stat =  $coef_value / ( $e * $e ) * abs( $e - $u - $s );
-my $HEPSPEC06_core_error = $HEPSPEC06_core_error_sist + $HEPSPEC06_core_error_stat;
-$HEPSPEC06_core = Truncate ($HEPSPEC06_core);
-$HEPSPEC06_core_error = Truncate ($HEPSPEC06_core_error);
+########################################################################
+#                                                                      #
+#   Sub Get_processors                                                 #
+#                                                                      #
+########################################################################
+sub Get_processors {
+	my $max_proc = `/bin/grep ^processor /proc/cpuinfo | wc -l`;
+        chomp($max_proc);
+	Print_debug("Found $max_proc processing units");
+	return $max_proc;	
+}
+########################################################################
+#                                                                      #
+#   Sub Get_processor_runs                                             #
+#                                                                      #
+########################################################################
+sub Get_processor_runs {
+# This subroutine returns an array of integers which make sense in order
+# to run several times a benchmarking with different simultaneous threads
+	my $max_proc = Get_processors();
+	my @proc_array;
+	for (my $proc = 4*$max_proc; $proc != 0; $proc = int($proc/2)){
+		push(@proc_array, $proc);
+	}
+	return reverse @proc_array;
+}
+########################################################################
+#                                                                      #
+#   average                                                            #
+#                                                                      #
+########################################################################
+#http://andrewstechhints.blogspot.com.es/2010/02/standard-deviation-in-perl.html
+sub average {
+        my (@values) = @_;
 
-# The output
-print "HOSTNAME=$hostname;HEPSPEC_core=$HEPSPEC06_core;HEPSPEC_core_error=$HEPSPEC06_core_error;USER=$u;ELAPSED=$e;SYSTEM=$s\n";
+        my $count = scalar @values;
+        my $total = 0; 
+        $total += $_ for @values; 
+
+        return $count ? $total / $count : 0;
+}
+########################################################################
+#                                                                      #
+#   stddev                                                             #
+#                                                                      #
+########################################################################
+#http://andrewstechhints.blogspot.com.es/2010/02/standard-deviation-in-perl.html
+sub std_dev {
+        my ($average, @values) = @_;
+
+        my $count = scalar @values;
+        my $std_dev_sum = 0;
+        $std_dev_sum += ($_ - $average) ** 2 for @values;
+
+        return $count ? sqrt($std_dev_sum / $count) : 0;
+}
+########################################################################
+#                                                                      #
+#   Print threaded result header                                       #
+#                                                                      #
+########################################################################
+sub  Print_threaded_result_header{
+        print "Hostname,N_threads,Total_HS06,Err_Total_HS06,Avg_HS06,Err_Avg_HS06,CPU(%)\n";
+}
+########################################################################
+#                                                                      #
+#   Build threaded result                                              #
+#                                                                      #
+########################################################################
+sub Build_threaded_result {
+	use List::Util qw( min max );
+	my $n_thr = scalar @_;
+	# Simple way, make an average of HEPSPECS
+	my @avg_array;
+	my @err_array;
+	my @e_array;
+        my $u_sum = 0;
+        my $s_sum = 0;
+	my @cpu_array;
+	foreach (@_){
+	  	push(@avg_array, $_->{HEPSPEC_core});
+		push(@err_array, $_->{HEPSPEC_core_error});
+		push(@e_array, $_->{ELAPSED});
+                $u_sum += $_->{USER};
+                $s_sum += $_->{SYSTEM};
+		push(@cpu_array, $_->{CPU});
+	}
+	my $e_avg = average(@e_array);
+	my $e_stddev = std_dev($e_avg, @e_array);
+	Print_debug("Avg(elapsed)=$e_avg, Std_dev(elapsed)=$e_stddev");
+	my ($total, $total_err) = Get_HEPSPEC06($n_thr, $e_avg, $e_stddev, $u_sum, $s_sum);
+	my $average = Truncate(average(@avg_array));
+	my $average_stddev = Truncate(std_dev($average, @avg_array));
+        # Cuadrature sum of syst + stat. errors
+	my $average_err = Truncate(sqrt($average_stddev * $average_stddev + max(@err_array)*max(@err_array)));
+	my $cpu_percentage = Truncate(average(@cpu_array));
+	print "$hostname,$n_thr,$total,$total_err,$average,$average_err,$cpu_percentage\n";
+}
+########################################################################
+#                                                                      #
+#   Sub Threaded_runs                                                  #
+#                                                                      #
+########################################################################
+sub Threaded_runs {
+	my @threaded_result_array;
+	my @runs;
+	if ( defined $multi ){
+		use threads;
+		@runs = Get_processor_runs();
+        }
+        elsif (defined $single) {
+		@runs = (1);
+	}
+	else {
+	# Default behaviour is to run in parallel with so many threads as procs
+		@runs = (1);
+	}
+	unless ($noheader){
+		Print_threaded_result_header();
+	}
+	foreach my $run (@runs){
+		my @threaded_result_run;
+		Print_debug("Running simultaneously on $run threads...");
+		my @threads_run;
+		for (my $thr_id=0; $thr_id!=$run; $thr_id++){
+			my $thr = threads->create(sub{Run_rubik()});
+			push(@threads_run, $thr);
+		}
+		# Let us wait for the results
+		foreach (@threads_run){
+			push(@threaded_result_run, $_->join());
+		}
+		push(@threaded_result_array, Build_threaded_result(@threaded_result_run));
+	}
+}
+########################################################################
+#                                                                      #
+#   Sub Run_rubik                                                      #
+#                                                                      #
+########################################################################
+sub Run_rubik{
+	my $format = '%e;%U;%S;%P';
+	my $command = `/usr/bin/env time --format="$format" $executable -c -q 15 $exchange`;
+#	my $randsleep = 1 + rand(1);
+#	my $command = `/usr/bin/env time --format="$format" sleep $randsleep $exchange`;
+	Print_debug($format);
+	chomp($command);
+	Print_debug($command);
+	# Opening the result
+	my ($e, $u, $s, $cpu_percentage) = split (/;/, $command);
+	chop($cpu_percentage);
+	my ($HEPSPEC06_core, $HEPSPEC06_core_error) = Get_HEPSPEC06(1, $e, $u, $s);
+	# The output
+	my %result = (HOSTNAME => $hostname, HEPSPEC_core => $HEPSPEC06_core, HEPSPEC_core_error => $HEPSPEC06_core_error, USER=> $u, ELAPSED => $e, SYSTEM=>$s, CPU => $cpu_percentage);
+	return \%result;
+}
+########################################################################
+#                                                                      #
+#   Sub Get_coefficient                                                #
+#                                                                      #
+########################################################################
+sub Get_HEPSPEC06{
+	my ($n, $e, $e_stddev, $u, $s) = @_;
+#	print "$n, $e, $u, $s\n";
+	my $coef = Get_coefficients();
+        my $coef_value = $coef->[0];
+        my $coef_error = $coef->[1];
+        my $HEPSPEC06 = $n * $coef_value / $e;
+        my $HEPSPEC06_error_sist = $n * $coef_error / $e;
+	my $HEPSPEC06_error_stat = $n * $coef_value / ($e*$e) * $e_stddev;
+	my $HEPSPEC06_error = sqrt($HEPSPEC06_error_sist*$HEPSPEC06_error_sist + $HEPSPEC06_error_stat*$HEPSPEC06_error_stat);
+	return (Truncate($HEPSPEC06), Truncate($HEPSPEC06_error_sist));
+}
 ########################################################################
 #                                                                      #
 #   Sub Get_coefficient                                                #
 #                                                                      #
 ########################################################################
 sub Get_coefficients{
+	# The Benchmark formula for equivalence to HEPSPEC06/core
+	# $HEPSPEC06_core = coefficient / elapsed_time, where coef = 729 and err_coef = 9, according to the last fit
 	my @coef=(729,9);
 	return \@coef;
 }
@@ -99,8 +256,8 @@ sub Print_version{
 #                                                                      #
 ########################################################################
 sub Print_license{
-        Print_output('Copyright 2011, Alejandro Lorca <alejandro.lorca@cti.csic.es>
-IFCA/SGAI, Consejo Superior de Investigaciones Cientificas.
+        Print_output('Copyright 2011,2014, Alejandro Lorca <alejandro.lorca@sciops.esa.int>
+Aurora B.V. for European Space Agency (ESA).
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -126,6 +283,9 @@ sub Print_usage{
 	if (! $exit_status){
 		Print_output('
  OPTIONS:
+      --single            Run only one instance
+      --multi             Run it for scalability multiple times in multithreaded mode
+      --noheader          Do not print header line
       --debug             Debugging information
       --quiet             Do not print Rubik_2^3 output
  HELP and ABOUT:
