@@ -254,7 +254,7 @@ sub Get_coefficients{
 #                                                                      #
 ########################################################################
 sub Print_version{
-	Print_output("Benchmark Rubik, an estimation of HEPSPEC06/core, version $code_version");
+	Print_output("Benchmark Rubik_2^3, an estimation of HEPSPEC06/core, version $code_version");
 	exit;
 }
 ########################################################################

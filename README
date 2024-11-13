@@ -1,5 +1,0 @@
-# It is not strictly necessary to compile the underlying binary since the benchmark_rubik does it
-# by calling the Makefile
-
-# In order to run the benchmark, just run 
-./benchmark_rubik.pl
