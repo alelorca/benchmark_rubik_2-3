@@ -30,11 +30,11 @@ use Getopt::Long;
 use Sys::Hostname;
 
 # Version
-my $code_version = '1.1';
-my ($help, $version, $license, $debug, $quiet, $single, $multi, $noheader);
+my $code_version = '1.2';
+my ($help, $version, $license, $debug, $quiet, $single, $multi, $noheader, $output);
 
 # The getoptions parses the cli
-GetOptions('help' => \$help, 'version' => \$version, 'license' => \$license, 'debug' => \$debug, 'quiet' => \$quiet, 'single' => \$single, 'multi' => \$multi, 'noheader' => \$noheader);
+GetOptions('help' => \$help, 'version' => \$version, 'license' => \$license, 'debug' => \$debug, 'quiet' => \$quiet, 'single' => \$single, 'multi' => \$multi, 'noheader' => \$noheader, 'output=s' => \$output);
 
 Print_usage(0) if $help;
 Print_version() if $version;
@@ -52,7 +52,8 @@ if ( ! -e $executable and -e 'Makefile' ){
 
 
 # Running the command exchanging stderr and stdout
-my $exchange = defined $quiet ? '2>&1 1>/dev/null' : '3>&1 1>&2 2>&3 3>&-';
+my $outputfile = defined $output ? $output : '/dev/null';
+my $exchange = defined $quiet ? "2>&1 1>$outputfile" : '3>&1 1>&2 2>&3 3>&-';
 
 
 Threaded_runs();
@@ -199,9 +200,17 @@ sub Threaded_runs {
 ########################################################################
 sub Run_rubik{
 	my $format = '%e;%U;%S;%P';
-	my $command = `/usr/bin/env time --format="$format" $executable -c -q 15 $exchange`;
+	my $command_string = qq(/usr/bin/env time --format="$format" $executable);
+	if (defined $output){
+		$command_string .= qq( -o $output);
+	}
+	else {
+		$command_string .= qq( -c);
+	}
+	$command_string .= qq( -q 15 $exchange);
+	Print_debug("Ready to execute: $command_string");
 #	my $randsleep = 1 + rand(1);
-#	my $command = `/usr/bin/env time --format="$format" sleep $randsleep $exchange`;
+	my $command = `$command_string`;
 	Print_debug($format);
 	chomp($command);
 	Print_debug($command);
@@ -286,6 +295,7 @@ sub Print_usage{
       --single            Run only one instance
       --multi             Run it for scalability multiple times in multithreaded mode
       --noheader          Do not print header line
+      --output=FILE       Generate result file for Rubik_2^3 configuration universe
       --debug             Debugging information
       --quiet             Do not print Rubik_2^3 output
  HELP and ABOUT:
