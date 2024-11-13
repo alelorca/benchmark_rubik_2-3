@@ -18,6 +18,11 @@ Under a basic Ubuntu 24.04 Linux installation it will require:
  * make
  * g++
  * git
+ * time (not the bash built-in but the package)
+
+```bash
+apt-get install make g++ git time
+```
 
 By default, the first run will indeed download and compile all necessary objects
 
