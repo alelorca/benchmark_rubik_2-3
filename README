@@ -1,0 +1,5 @@
+# It is not strictly necessary to compile the underlying binary since benchmark_rubik does it
+# In order to run the benchmark, just run 
+./benchmark_rubik.pl
+# To submit the benchmark
+glite-wms-job-submit -a benchmark.jdl
