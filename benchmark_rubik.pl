@@ -1,9 +1,7 @@
 #!/usr/bin/env perl
 ########################################################################
 #                                                                      #
-#  Copyright 2011. Alejandro Lorca <alejandro.lorca@cti.csic.es>       #
-#  <alejandro.lorca@computer.org>                                      #
-#  IFCA/SGAI, Consejo Superior de Investigaciones Cientificas-CSIC     #
+#  Copyright 2011. Alejandro Lorca <alelorca@yahoo.es>                 #
 #                                                                      #
 #  Licensed under the Apache License, Version 2.0 (the "License");     #
 #  you may not use this file except in compliance with the License.    #
@@ -17,7 +15,7 @@
 #  implied. See the License for the specific language governing        #
 #  permissions and limitations under the License.                      #
 #                                                                      #
-#  Project http://ghost.sgai.csic.es/redmine/projects/benchmark-rubik  #
+#  Project https://github.com/alelorca/benchmark_rubik_2-3             #
 #  Based on an own project Rubik_2^3, 2009                             #
 #  Lightweight and fast Benchmark offering an estimation of the        #
 #  HEPSPEC2006/core Benchmark                                          #
@@ -30,7 +28,7 @@ use Getopt::Long;
 use Sys::Hostname;
 
 # Version
-my $code_version = '1.2';
+my $code_version = '1.3';
 my ($help, $version, $license, $debug, $quiet, $single, $multi, $noheader, $output);
 
 # The getoptions parses the cli
@@ -44,7 +42,7 @@ Print_license() if $license;
 # Preparing the execution
 my $hostname = hostname();
 Print_debug("Preparing the execution of the benchmark rubik in host $hostname, may take few minutes...");
-my $executable = './rubik_2x2x2';
+my $executable = 'rubik_2^3/rubik_2^3';
 if ( ! -e $executable and -e 'Makefile' ){
 	Print_debug("The binary $executable does not exist yet, running make");
 	system('make', '-s') == 0 or die "The binary $executable could not be made";
@@ -265,8 +263,7 @@ sub Print_version{
 #                                                                      #
 ########################################################################
 sub Print_license{
-        Print_output('Copyright 2011,2014, Alejandro Lorca <alejandro.lorca@sciops.esa.int>
-Aurora B.V. for European Space Agency (ESA).
+        Print_output('Copyright 2011,2014,2024 Alejandro Lorca <alelorca@yahoo.es>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -288,12 +285,12 @@ permissions and limitations under the License.');
 ########################################################################
 sub Print_usage{
         my $exit_status = shift;
-	Print_output('Usage: benchmark_rubik.pl [OPTION]');
+	Print_output('Usage: benchmark_rubik.pl [OPTIONS]');
 	if (! $exit_status){
 		Print_output('
  OPTIONS:
-      --single            Run only one instance
-      --multi             Run it for scalability multiple times in multithreaded mode
+      --single            Run only one instance (default)
+      --multi             Run it multiple times in multithreaded mode for scalability
       --noheader          Do not print header line
       --output=FILE       Generate result file for Rubik_2^3 configuration universe
       --debug             Debugging information

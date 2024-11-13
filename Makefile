@@ -15,27 +15,31 @@
 # You should have received a copy of the GNU General Public License
 # along with rubik_2^3.  If not, see <http://www.gnu.org/licenses/>.
 #
-TARGET:=rubik_2x2x2
-VERSION:=1.0
+URL=https://github.com/alelorca/rubik_2-3.git
+TARGETDIR:=rubik_2^3
+TARGET:=rubik_2^3/rubik_2^3
+VERSION:=1.3
 # For real equivalence to HEPSPEC06 (if used without static, multiply the obtained value by 1.037 and the error by 1.6)
 CXXFLAGS=-O2 -fPIC -pthread --static
-#CXXFLAGS=-O2 -fPIC -pthread -m32 --static
 CXX=g++
 OBJECTS:=run_rubik.o rubik.o
-PACKAGE:=run_rubik.cpp rubik.cpp run_rubik.h Makefile README benchmark_rubik.pl benchmark.jdl
+PACKAGE:=Makefile README benchmark_rubik.pl
 
 .PHONY: all clean
 
-all: $(TARGET)
+all: $(TARGETDIR) $(TARGET)
 
-$(TARGET): run_rubik.o rubik.o
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS)
+$(TARGETDIR):
+	git clone $(URL) $(TARGETDIR)
+
+$(TARGET):
+	@$(MAKE) -C $(@D)
 
 %.o: %.cpp %.h
-	$(CXX) $(CXXFLAGS) -c $< 
+	$(CXX) $(CXXFLAGS) -c $<
 
 tgz: $(PACKAGE)
 	cd ..; tar cpzf benchmark_rubik-$(VERSION).tgz $(addprefix benchmark_rubik-$(VERSION)/,$(PACKAGE)); cd benchmark_rubik-$(VERSION)
 
 clean:
-	rm -f *.o $(TARGET)
+	rm -rfv *.o $(TARGET) bin $(TARGETDIR)
