@@ -16,19 +16,30 @@
 The code is based on perl, but in order to run it properly the system requires compiling 
 the underlying benchmark engine (Rubik_2^3) which is based on c++.
 
-Under a basic Ubuntu 24.04 Linux installation it will require:
+Under a basic  Linux installation it will require:
  * make
- * g++
+ * g++ and static libraries
  * git
+ * some perl modules
  * time (not the bash built-in but the package)
 
+#### Ubuntu/Debian
+Tested command in Ubunbu 24.04 (with sudo)
 ```bash
-apt-get install make g++ git time
+sudo apt-get install make g++ git time
+```
+
+#### RHEL/CentOS/Alma/Rocky
+Tested commands in Almalinux 9 (as root), including the enabling of crb (powertools) repo
+```bash
+dnf install dnf-plugins-core
+dnf config-manager --enable crb
+dnf install make g++ glibc-static libstdc++-static perl-Sys-Hostname perl-threads git time
 ```
 
 By default, the first run will indeed download and compile all necessary objects
 
-### 
+### Compilation
 ```bash
 # Clone the repository
 git clone https://github.com/alelorca/benchmark_rubik_2-3.git
@@ -36,8 +47,8 @@ git clone https://github.com/alelorca/benchmark_rubik_2-3.git
 # Navigate to the project directory
 cd benchmark_rubik_2-3
 
-# Run the code in quiet mode
-./benchmark_rubik.pl --quiet
+# Run the makefile
+make
 ```
 
 ## Features
@@ -103,6 +114,16 @@ Argument "Command terminated by signal 9\n43.63" isn't numeric in division (/) a
 Thread 77 terminated abnormally: Illegal division by zero at ./benchmark_rubik.pl line 234.
 ```
 Still, the output allows to understand that the best behaviour is when running 16 threads since the value of the Total_HS06 (193.17) is the highest.
+
+### Stderr
+The stderr is just filled with the underlying Rubik_2^3 output. You can check the correctness by comparing the md5sum:
+```bash
+$ ./benchmark_rubik.pl 2>rubik_2^3.log
+Hostname,N_threads,Total_HS06,Err_Total_HS06,Avg_HS06,Err_Avg_HS06,CPU(%)
+c9bae085b1d8,1,27.09,0.33,27.09,0.33,99
+$ md5sum rubik_2^3.log
+ed8bf80a8e34d0926b87ab7fa2932988  rubik_2^3.log
+```
 
 ## References 
 1. HEPSPEC06: [https://w3.hepix.org/benchmarking/HS06.html]
